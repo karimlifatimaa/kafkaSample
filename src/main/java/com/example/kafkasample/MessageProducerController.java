@@ -1,33 +1,40 @@
 package com.example.kafkasample;
 
+import com.example.kafkasample.dto.NotificationDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/kafka")
 public class MessageProducerController {
-    // Kafka ilə əməliyyatlar üçün Spring-in təqdim etdiyi hazır şablon (template).
-    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    // Mesajların göndəriləcəyi topic-in adı.
-    private static final String TOPIC = "ilk-movzu";
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${app.kafka.topic}")
+    private String topicName;
 
     @Autowired
-    public MessageProducerController(KafkaTemplate<String, String> kafkaTemplate) {
+    public MessageProducerController(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    // HTTP POST sorğusu ilə mesaj göndərmək üçün endpoint.
-    // Məsələn: POST http://localhost:8080/api/messages/send?message=salam
+    // http://localhost:8080/api/kafka/send?title=Salam&message=Test&recipient=User1
     @PostMapping("/send")
-    public String sendMessage(@RequestParam("message") String message) {
+    public String sendMessage(@RequestParam("title") String title,
+            @RequestParam("message") String message,
+            @RequestParam("recipient") String recipient) {
         try {
-            // kafkaTemplate.send() metodu ilə mesajı müvafiq topic-ə göndəririk.
-            kafkaTemplate.send(TOPIC, message);
-            return "Mesaj uğurla göndərildi: '" + message + "'";
+            // DTO yaradiriq
+            NotificationDto notification = new NotificationDto(title, message, recipient);
+
+            // Obyekti gonderirik
+            kafkaTemplate.send(topicName, notification);
+
+            return "Mesaj ugurla gonderildi: " + notification.toString();
         } catch (Exception e) {
-            return "Mesaj göndərilərkən xəta baş verdi: " + e.getMessage();
+            return "Mesaj gonderilerken xeta bas verdi: " + e.getMessage();
         }
     }
 }
